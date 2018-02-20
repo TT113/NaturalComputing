@@ -4,13 +4,18 @@ import numpy as np
 
 class Entity(np.ndarray):
 
-    def __new__(cls, essential_params):
-        obj = np.asarray(essential_params).view(cls)
-        return obj
-
     @abstractmethod
     def convert(self):
         pass
 
-    def print(self):
-        print(self)
+    def __new__(cls, params):
+        obj = np.asarray(params).view(cls)
+        return obj
+
+    def __init__(self, params):
+        super().__init__()
+
+    def __str__(self):
+        return super().__str__()
+
+

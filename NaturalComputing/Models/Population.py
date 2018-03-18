@@ -1,17 +1,13 @@
 import numpy as np
 
 
-class Population(np.ndarray):
+class Population():
 
-    def __new__(cls, dimension1, dimension2):
-        obj = np.zeros(shape=(dimension1, dimension2))
-        return obj
 
-    def __init__(self, dimension1, dimension2):
-        super().__init__()
-
-    def __str__(self):
-        return super().__str__()
+    def __init__(self, name=None, job=None, quote=None):
+        self.name = name
+        self.job = job
+        self.quote = quote
 
 #    def remove(self):
 

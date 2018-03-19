@@ -5,7 +5,7 @@ functions_name = ["Sum of squares", "Easom’s function"]
 
 
 # calls function with corresponding index
-def get_function(n = random.randint(0, len(functions_name) - 1)):
+def get_function(n = random.randint(0, len(functions_name) - 2)):
     print(functions_name[n])
     return globals()['f'+str(n)]
 

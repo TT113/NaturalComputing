@@ -20,6 +20,9 @@ class Bacteria(Entity):
         obj.cost = 0.0
         return obj
 
+    def __init__(self, coordinates_in_space):
+        self.calc_cost()
+
     def __str__(self):
         return super().__str__()
 
@@ -32,24 +35,23 @@ class Bacteria(Entity):
 
 search_space_dimension = 2
 
-number_of_bacteria_in_population = 100
+number_of_bacteria_in_population = 50
 
 number_of_split = int(number_of_bacteria_in_population / 2)
 
 number_of_elimination_dispersal_events = 5
-number_of_reproduction_steps = 100
+number_of_reproduction_steps = 5
 number_of_chemotaxis_steps = 100
 
-elimination_dispersal_probability = 0.0001
+elimination_dispersal_probability = 0.25
 
 swimming_length = 3
-step_size = 0.6
+step_size = 0.1
 
-eliminate_probability = 0.25
 attractant_depth = 0.1
 attractant_signal_depth = 0.1
-attractant_signal_width = 0.1
-repellent_effect_height = 0.1
+attractant_signal_width = 0.2
+repellent_effect_height = attractant_depth
 repellent_effect_width = 10.0
 
 
@@ -81,16 +83,24 @@ def get_initial_population(number_of_bacteria_in_population, search_space):
     return population
 
 
-def interaction_step(bacteria, population):
-    atracctant = 0.0
-    repelent = 0.0
-    for i in range(0, number_of_bacteria_in_population):
-        diff = 0
-        for j in range(0, search_space_dimension):
-            diff += (bacteria[j] - population[i][j])**2
-        atracctant += -1.0 * attractant_depth * math.exp(-attractant_signal_width * diff)
-        repelent += repellent_effect_height * math.exp(-repellent_effect_width * diff)
-    bacteria.fitness = bacteria.cost + atracctant + repelent
+def attract_repel(bacteria, population, d_attr, w_attr, h_rep, w_rep):
+    attract = compute_cell_interaction(bacteria, population, -d_attr, -w_attr)
+    repel = compute_cell_interaction(bacteria, population, h_rep, -w_rep)
+    return attract + repel
+
+
+def compute_cell_interaction(bacteria, population, depth, width):
+    result = 0.0
+    for other_bacteria in population:
+        diff = 0.0
+        diff += sum(x**2 for x in bacteria - other_bacteria)
+        result += depth * math.exp(width * diff)
+    return result
+
+
+def evaluate(bacteria, population, d_attr, w_attr, h_rep, w_rep):
+    bacteria.calc_cost()
+    bacteria.fitness = bacteria.cost + attract_repel(bacteria, population, d_attr, w_attr, h_rep, w_rep)
 
 
 def tumble_cell(bacteria, search_space):
@@ -115,42 +125,46 @@ def swim_step(new_cell, current_cell, search_space):
             coordinate = search_space[i][1]
         new_cell[i] = coordinate
 
+def check_for_best_solution(bacteria, best_bacteria):
+    if best_bacteria is None or bacteria.cost < best_bacteria.cost:
+        best_bacteria = bacteria
+    return best_bacteria
+
 
 def chemotaxis(population, search_space):
-    last_fitness = 0
-    for i in range(0, number_of_bacteria_in_population):
-        interaction_step(population[i], population)
-        new_cell = tumble_cell(population[i], search_space)
-        new_cell.calc_cost()
-        interaction_step(new_cell, population)
-        for j in range(0, search_space_dimension):
-            population[i][j] = new_cell[j]
-        population[i].cost = new_cell.cost
-        population[i].fitness = new_cell.fitness
-        population[i].health += population[i].fitness
-        for j in range(0, swimming_length):
-            if new_cell.fitness < last_fitness:
-                last_fitness = new_cell.fitness
-                new_cell.calc_cost()
-                interaction_step(new_cell, population)
-                for j in range(0, search_space_dimension):
-                    population[i][j] = new_cell[j]
-                    population[i].cost = new_cell.cost
-                    population[i].fitness = new_cell.fitness
-                    population[i].health += population[i].fitness
-            else:
-                break
+    best_bacteria = None
+    for i in range(0, number_of_chemotaxis_steps):
+        moved_cells = []
+        for bacteria in population:
+            sum_of_nutrients = 0
+            evaluate(bacteria, population, attractant_depth, attractant_signal_width, repellent_effect_height, repellent_effect_width)
+            best_bacteria = check_for_best_solution(bacteria, best_bacteria)
+            sum_of_nutrients += bacteria.fitness
+            for j in range(0, swimming_length):
+                new_cell = tumble_cell(bacteria, search_space)
+                evaluate(new_cell, population, attractant_depth, attractant_signal_width, repellent_effect_height,
+                         repellent_effect_width)
+                best_bacteria = check_for_best_solution(new_cell, best_bacteria)
+                if new_cell.fitness > bacteria.fitness:
+                    break
+                bacteria = new_cell
+                sum_of_nutrients += bacteria.fitness
+            bacteria.health = sum_of_nutrients
+            moved_cells.append(bacteria)
+        population = moved_cells
+        # print(best_bacteria.fitness + best_bacteria.cost)
+    return [best_bacteria, population]
+
+
+def reinit_population(population):
+    for bacteria in population:
+        bacteria.health = 0
 
 
 def reproduction(population):
-    population.sort(key=operator.attrgetter('health'))
-    k = len(population) - 1
-    for i in range(0, number_of_split):
-        for j in range(0, search_space_dimension):
-            population[k][j] = population[i][j]
-            k -= 1
-    for i in range(0, search_space_dimension):
-        population[i].health = 0
+    best_bacteria = sorted(population, key=operator.attrgetter('health'), reverse=True)[:int(len(population) / 2)]
+    population = best_bacteria + best_bacteria
+    reinit_population(population)
 
 
 def elimination_dispersal(population, search_space):
@@ -172,15 +186,16 @@ def locate__new_population_randomly_in_space(search_space):
 
 
 def bacterial_foraging_algorithm():
-    search_space = generate_space(np.array([-1, 1]), search_space_dimension)
+    best_bacteria = None
+    search_space = generate_space(np.array([-100, 100]), search_space_dimension)
     population = locate__new_population_randomly_in_space(search_space)
     for i in range(0, number_of_elimination_dispersal_events):
         for j in range(0, number_of_reproduction_steps):
-            for k in range(0, number_of_chemotaxis_steps):
-                chemotaxis(population, search_space)
-                print(best)
+            best_for_chemotaxis = chemotaxis(population, search_space)[0]
+            best_bacteria = check_for_best_solution(best_for_chemotaxis, best_bacteria)
             reproduction(population)
         elimination_dispersal(population, search_space)
+    print(best_bacteria.cost)
 
 
 bacterial_foraging_algorithm()

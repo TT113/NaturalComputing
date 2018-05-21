@@ -5,6 +5,8 @@ import operator
 
 from NaturalComputing.Models.Entity import Entity
 from NaturalComputing.TestFunctions import get_function
+from NaturalComputing.TestFunctions import get_info
+
 
 
 class Bacteria(Entity):
@@ -25,16 +27,22 @@ class Bacteria(Entity):
     def calc_cost(self):
         self.cost = searching_function(self)
 
+    def serialize(self):
+        return np.array2string(self, formatter={'float_kind':lambda x: "%.2f" % x})[1:-1] + ' ' + str(self.cost)
 
-search_space_dimension = 2
+
+test_function_name = "drop_wave"
+searching_function = get_function(test_function_name)
+search_space_dimension = get_info(test_function_name)[0]
+segment = get_info(test_function_name)[1]
 
 number_of_bacteria_in_population = 50
 
 number_of_split = int(number_of_bacteria_in_population / 2)
 
 number_of_elimination_dispersal_events = 3
-number_of_reproduction_steps = 6
-number_of_chemotactic_steps = 20
+number_of_reproduction_steps = 3
+number_of_chemotactic_steps = 30
 
 elimination_dispersal_probability = 0.25
 
@@ -47,8 +55,6 @@ attractant_signal_width = 0.2
 repellent_effect_height = attractant_depth
 repellent_effect_width = 10.0
 
-
-searching_function = get_function()
 
 
 def get_random_vector_in_space(search_space):
@@ -137,6 +143,7 @@ def chemotactic(population, search_space):
             bacteria.health = health
             moved_cells.append(bacteria)
         population = moved_cells
+        file_to_save.write(serialize_population(population))
         # print(str(best_bacteria.fitness) + " " + str(best_bacteria.cost))
     return [best_bacteria, population]
 
@@ -147,12 +154,12 @@ def reinit_population(population):
 
 
 def reproduction(population):
-    best_bacteria = sorted(population, key=operator.attrgetter('health'), reverse=True)[:int(len(population) / 2)]
-    return best_bacteria + best_bacteria
+    best_bacterias = sorted(population, key=operator.attrgetter('health'), reverse=True)[:int(len(population) / 2)]
+    return best_bacterias + best_bacterias
 
 
 def elimination_dispersal(population, search_space):
-    for i in range (0, number_of_bacteria_in_population):
+    for i in range(0, number_of_bacteria_in_population):
         if random.uniform(0, 1) < elimination_dispersal_probability:
             new_coordinates = get_random_vector_in_space(search_space)
             for j in range(0, search_space_dimension):
@@ -160,19 +167,26 @@ def elimination_dispersal(population, search_space):
             population[i].calc_cost()
 
 
-def locate__new_population_randomly_in_space(search_space):
+def locate_new_population_randomly_in_space(search_space):
     population = []
     for i in range(0, number_of_bacteria_in_population):
         bacteria = Bacteria(get_random_vector_in_space(search_space))
-        bacteria.calc_cost()
         population.append(bacteria)
     return population
 
 
+def serialize_population(population):
+    str = ''
+    for bacteria in population:
+        str += bacteria.serialize() + ' '
+    return str + '\n'
+
 def bacterial_foraging_algorithm():
+    file_to_save.write(str(search_space_dimension) + '\n')
     best_bacteria = None
-    search_space = generate_space(np.array([-10, 10]), search_space_dimension)
-    population = locate__new_population_randomly_in_space(search_space)
+    search_space = generate_space(np.array(segment), search_space_dimension)
+    population = locate_new_population_randomly_in_space(search_space)
+    file_to_save.write(serialize_population(population))
     for i in range(0, number_of_elimination_dispersal_events):
         for j in range(0, number_of_reproduction_steps):
             best_for_chemotactic = chemotactic(population, search_space)[0]
@@ -180,6 +194,8 @@ def bacterial_foraging_algorithm():
             population = reproduction(population)
         elimination_dispersal(population, search_space)
     print(best_bacteria.cost)
+    file_to_save.close()
 
 
+file_to_save = open('bacterias_foraging.txt', 'w')
 bacterial_foraging_algorithm()

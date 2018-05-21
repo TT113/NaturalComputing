@@ -12,11 +12,8 @@ class Entity(np.ndarray):
         obj = np.asarray(input_array).view(cls)
         return obj
 
-    # def __array_finalize__(self, obj):
-    #     if obj is None: return
-    #     # self.info = getattr(obj, 'info', None)
-
     def __str__(self):
         return super().__str__()
+
 
 

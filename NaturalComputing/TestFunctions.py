@@ -2,13 +2,13 @@ import random
 import math
 
 functions = {
-    "sum_of_squares": -1,
+    "sum_of_squares": [-1, [-10, 10]],
     "sin": 1,
     "easom" : [2, [-100, 100]],
     "polynom": 1,
-    "zlosin": 1,
+    "zlosin": [1, [-10, 10]],
     "drop_wave": [2, [-5.12, 5.12]],
-    "eggcrate": 2}
+    "eggcrate": [2, [-4, 4]]}
 
 
 def get_function():
@@ -50,7 +50,7 @@ def zlosin(x):
 
 
 def eggcrate(x):
-    return x[0]**2 + x[1]**2 + 25(math.sin(x[0])**2+math.sin(x[1]))
+    return x[0]**2 + x[1]**2 + 25*(math.sin(x[0])**2+math.sin(x[1])**2)
 
 
 def easom(x):

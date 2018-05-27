@@ -64,7 +64,7 @@ def draw_bacterias():
         pygame.draw.circle(screen, Color.blue, coord, 3)
 
 
-function = get_function('zlosyn')
+function = get_function('zlosin')
 static = pygame.Surface((ScreenConfig.screen_width, ScreenConfig.screen_height))
 fill_background(static)
 draw_net(static)

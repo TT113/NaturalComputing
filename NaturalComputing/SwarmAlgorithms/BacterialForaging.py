@@ -7,6 +7,8 @@ from NaturalComputing.Models.Entity import Entity
 from NaturalComputing.TestFunctions import get_function
 from NaturalComputing.TestFunctions import get_info
 
+from NaturalComputing.Models.AlgorithmStopMode import AlgorithmStopMode
+
 
 class Bacteria(Entity):
 
@@ -31,31 +33,29 @@ class Bacteria(Entity):
 
 
 class BacterialForaging:
-
-
     number_of_bacteria_in_population = 50
-
     number_of_split = int(number_of_bacteria_in_population / 2)
-
     number_of_elimination_dispersal_events = 3
-    number_of_reproduction_steps = 3
-    number_of_chemotactic_steps = 30
-
+    number_of_reproduction_steps = 4
+    number_of_chemotactic_steps = 75
     elimination_dispersal_probability = 0.25
-
     swimming_length = 4
     step_size = 0.1
-
     attractant_depth = 0.1
     attractant_signal_depth = 0.1
     attractant_signal_width = 0.2
     repellent_effect_height = attractant_depth
     repellent_effect_width = 10.0
 
-    def __init__(self, dimension, searching_function, segment):
-        self.search_space_dimension = dimension
-        self.searching_function = searching_function
-        self.segment = segment
+    def __init__(self, **kwargs):
+        self.search_space_dimension = kwargs['dimension']
+        self.searching_function = kwargs['searching_function']
+        self.segment = kwargs['segment']
+        if 'accuracy' in kwargs:
+            self.mode = AlgorithmStopMode.FIXED_TARGET
+            self.accuracy = kwargs['accuracy']
+            self.optimum = kwargs['optimum']
+        self.file_to_save = open('bacterias_foraging.txt', 'w')
 
     def get_random_vector_in_space(self, search_space):
         vec = np.zeros(search_space.shape[0])
@@ -126,6 +126,9 @@ class BacterialForaging:
                               self.repellent_effect_height,
                               self.repellent_effect_width)
                 best_bacteria = self.check_for_best_solution(bacteria, best_bacteria)
+                if self.mode == AlgorithmStopMode.FIXED_TARGET and\
+                                abs(self.optimum - best_bacteria.cost) < self.accuracy:
+                    return best_bacteria, population
                 health += bacteria.fitness
                 for j in range(0, self.swimming_length):
                     new_cell = self.tumble_cell(bacteria, search_space)
@@ -143,7 +146,7 @@ class BacterialForaging:
                 bacteria.health = health
                 moved_cells.append(bacteria)
             population = moved_cells
-            self.file_to_save.write(self.serialize_population(population))
+            # self.file_to_save.write(self.serialize_population(population))
             # print(str(best_bacteria.fitness) + " " + str(best_bacteria.cost))
         return best_bacteria, population
 
@@ -178,7 +181,6 @@ class BacterialForaging:
         return str + '\n'
 
     def optimize(self):
-        self.file_to_save = open('bacterias_foraging.txt', 'w')
         self.file_to_save.write(str(self.search_space_dimension) + '\n')
         best_bacteria = None
         search_space = self.generate_space(np.array(self.segment), self.search_space_dimension)
@@ -188,14 +190,34 @@ class BacterialForaging:
             for j in range(0, self.number_of_reproduction_steps):
                 best_for_chemotactic, population = self.chemotactic(population, search_space)
                 best_bacteria = self.check_for_best_solution(best_for_chemotactic, best_bacteria)
+                if self.mode == AlgorithmStopMode.FIXED_TARGET and \
+                                abs(self.optimum - best_bacteria.cost) < self.accuracy:
+                    return [best_bacteria.cost, 1]
                 population = self.reproduction(population)
             self.elimination_dispersal(population, search_space)
         self.file_to_save.close()
-        return best_bacteria.cost
+        print(best_bacteria.cost)
+        return [best_bacteria.cost, -1]
 
 
-test_function_name = "zlosin"
-searching_function = get_function(test_function_name)
-search_space_dimension = get_info(test_function_name)[0]
-segment = get_info(test_function_name)[1]
-BacterialForaging(search_space_dimension, searching_function, segment).optimize()
+results = []
+stuck = 0
+while len(results) < 10:
+    test_function_name = "drop_wave"
+    searching_function = get_function(test_function_name)
+    search_space_dimension = get_info(test_function_name)[0]
+    segment = get_info(test_function_name)[1]
+    result = BacterialForaging(dimension=search_space_dimension,
+                      searching_function=searching_function,
+                      segment=segment,
+                      accuracy=10**-1,
+                      optimum= get_info(test_function_name)[2]).optimize()
+    print(str(searching_function.calls))
+    if result[1] != -1:
+        print("success")
+        results.append(searching_function.calls)
+    else:
+        stuck += 1
+        print("stuck")
+print(sum(results)/len(results))
+print("stuck:", stuck)

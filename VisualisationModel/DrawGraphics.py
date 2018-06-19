@@ -22,6 +22,7 @@ dataset.close()
 
 pygame.init()
 screen = pygame.display.set_mode((ScreenConfig.screen_width, ScreenConfig.screen_height))
+pygame.display.set_caption("2-D Algorithm visualization")
 
 def coord_to_screen_point(point):
     val =  -(ScreenConfig.viewport_center[0] - point[0]) * ScreenConfig.x_pixels_for_one + ScreenConfig.screen_width//2, \
@@ -41,11 +42,11 @@ def draw_net(surface, step=1):
                                               coord_to_screen_point((ScreenConfig.bounding_box[1][0], y)))
 
 def draw_function(f, surface):
-    x_vals = np.arange(-100, 100, 0.01)
+    x_vals = np.arange(-10, 10, 0.01)
     y_vals = [f(x) for x in x_vals]
 
     for i in range(1, len(x_vals)):
-        pygame.draw.line(surface, Color.green, coord_to_screen_point((x_vals[i-1], y_vals[i-1])),
+        pygame.draw.line(surface, Color.red, coord_to_screen_point((x_vals[i-1], y_vals[i-1])),
                                               coord_to_screen_point((x_vals[i], y_vals[i])), 2)
 
 class rendering_context:
@@ -61,7 +62,7 @@ def draw_bacterias():
     for i in ticks[rendering_context.tick]:
         coord = coord_to_screen_point(i)
         coord = int(coord[0]), int(coord[1])
-        pygame.draw.circle(screen, Color.blue, coord, 3)
+        pygame.draw.circle(screen, Color.black, coord, 3)
 
 
 function = get_function('zlosin')
